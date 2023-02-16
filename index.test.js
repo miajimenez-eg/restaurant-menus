@@ -1,5 +1,5 @@
 const {sequelize} = require('./db')
-const {Restaurant, Menu} = require('./models/index')
+const {Restaurant, Menu, Item} = require('./models/index')
 const {
     seedRestaurant,
     seedMenu,
@@ -84,4 +84,57 @@ describe('Restaurant and Menu Models', () => {
         
         expect(seedRestaurant[0].rating).toBe(4);
     });
+
+    test('a restaurant has many menus', async () => {
+        // get restaurant from db
+        const appleBees = await Restaurant.findByPk(1);
+        // get some menus from db
+        const menus = await Menu.findAll()
+        // add menus to restaurant
+        await appleBees.addMenu(menus);
+        // get menus that are associated to the applebees restaurant
+        const restaurantWithMenus = await Menu.findAll( {where: { restaurantId: 1 } });
+
+        expect(restaurantWithMenus[0].title).toEqual('Breakfast');
+        expect(restaurantWithMenus[1].title).toEqual('Lunch');
+        expect(restaurantWithMenus[2].title).toEqual('Dinner');
+    })
+
+    test('many to many relationship between items and menus', async () => {
+        // create items
+        const item1 = await Item.create({
+            name: 'bhindi masala',
+            image: 'someimage.jpg',
+            price: 9.50,
+            vegetarian: true
+        });
+
+        const item2 = await Item.create({
+            name: 'egusi soup',
+            image: 'someimage.jpg',
+            price: 10.50,
+            vegetarian: false
+        });
+
+        // get items from db
+        const items = await Item.findAll();
+        // get some menus from db
+        const menu1 = await Menu.findByPk(1);
+        const menu2 = await Menu.findByPk(2);
+        // add items to menus
+        await menu1.addItem(item1);
+        await menu1.addItem(item2);
+        await menu2.addItem(item1);
+        // get menus that have items associated to them
+        const menusWithItems = await Menu.findAll({
+            include: {
+                model: Item,
+                where: { id: item1.id }
+            }
+        });
+        expect(menusWithItems.length).toBe(2);
+        expect(menusWithItems[0].name).toBe(menu1.name);
+        expect(menusWithItems[1].name).toBe(menu2.name);
+        
+    })
 })
